@@ -22,6 +22,8 @@ const aws_1 = require("./aws");
 const redis_1 = require("redis");
 const publisher = (0, redis_1.createClient)();
 publisher.connect();
+const subscriber = (0, redis_1.createClient)();
+subscriber.connect();
 const PORT = 8006;
 const app = (0, express_1.default)();
 app.use(cors());
@@ -35,9 +37,18 @@ app.post('/deploy', (req, res) => __awaiter(void 0, void 0, void 0, function* ()
     files.forEach((file) => __awaiter(void 0, void 0, void 0, function* () {
         yield (0, aws_1.uploadFile)(file.slice(__dirname.length + 1), file);
     }));
+    yield new Promise((resolve) => setTimeout(resolve, 5000));
     publisher.lPush("build-queue", id);
+    publisher.hSet("status", id, "uploaded");
     res.json({
         id: id
+    });
+}));
+app.get('/status', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const id = req.query.id;
+    const response = yield subscriber.hGet("status", id);
+    res.json({
+        status: response
     });
 }));
 app.listen(PORT, () => {
